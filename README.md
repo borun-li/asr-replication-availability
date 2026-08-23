@@ -283,9 +283,14 @@ bibliographic metadata **from Crossref** and appends a row to `input/new_article
 filled and the coding columns empty:
 
 ```bash
-python3 pipeline/add_article.py 10.1177/00031224251320103
+# one article — by URL
 python3 pipeline/add_article.py https://journals.sagepub.com/doi/10.1177/00031224251324504
-python3 pipeline/add_article.py <doi-or-url> <doi-or-url> …          # several at once
+
+# or by DOI
+python3 pipeline/add_article.py 10.1177/00031224251320103
+
+# several at once — mix DOIs and URLs freely
+python3 pipeline/add_article.py <doi-or-url> <doi-or-url> …
 ```
 
 This step needs an internet connection but no API key (Python only). No manual data entry.
