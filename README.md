@@ -128,6 +128,7 @@ asr/
 │   ├── add_article.py       #   Scenario 3 — add an article (Block A from Crossref; needs internet)
 │   └── merge_new.py         #   Scenario 3 — merge coded rows into the dataset, by volume
 ├── scripts/                # deterministic ingestion; no LLM
+│   ├── prepare_input.py     #   ONE command → input/asr_<year>.xlsx Block A (chains the 3 below)
 │   ├── build_xlsx.py        #   create the empty workbook with headers
 │   ├── crossref_fetch.py    #   fill Block A (title/authors/date/url/volume/issue) from Crossref
 │   ├── format_xlsx.py       #   derive OnlineFirst + styling
@@ -207,17 +208,17 @@ extension**, and you must **pass the Cloudflare check once per session** (see
 [Prerequisites](#prerequisites)). The output is *comparable, not byte-identical* — the agents make
 judgment calls (see [`docs/run_provenance.md`](docs/run_provenance.md)).
 
-**The Block A worklist for each shipped volume already lives in `input/`** —
-`input/asr_vol90.xlsx` and `input/asr_vol91.xlsx`, with the bibliographic columns filled and the
-coding columns empty. To reproduce a **different** year/volume, generate its Block A first with the
-deterministic ingestion scripts (no LLM):
+**Step 0 — get the volume's Block A worklist into `input/` (one command).** The shipped volumes
+already have theirs — `input/asr_vol90.xlsx` and `input/asr_vol91.xlsx` (Block A filled, coding
+columns empty) — so if you are verifying **vol 90 or vol 91, skip this step**. For any **other**
+year, one command builds it (run inside your clone from Step 1):
 
 ```bash
-python3 scripts/build_xlsx.py     --year 2024   # empty workbook with headers
-python3 scripts/crossref_fetch.py --year 2024   # fills title/authors/date/url/volume/issue from Crossref
-python3 scripts/format_xlsx.py    --year 2024   # derives OnlineFirst + styling
-# -> input/asr_2024.xlsx : Block A complete, coding columns empty
+python3 scripts/prepare_input.py --year 2024     # -> input/asr_2024.xlsx (Block A complete)
 ```
+
+(This just chains the three deterministic ingestion scripts — build → Crossref fetch → format — so
+you don't run them by hand. No LLM, no API key; needs internet + `pip install requests openpyxl`.)
 
 **Step 1 — clone the repo and open Claude Code inside it.**
 
@@ -238,16 +239,26 @@ worklist (`input/asr_vol90.xlsx` already has Block A filled, coding columns empt
 > / OpenICPSR), and fill the coding columns strictly per the codebook. Work in batches and pause for
 > me to review. Write the filled rows to `output/my_vol90_recode.csv`.
 
-**Step 3 — compare your coding to the shipped dataset.** Run the same summary over each and check
-the numbers line up:
+**Step 3 — compare your coding to the shipped dataset.** `reproduce_table.py` reads a coded file and
+prints a one-line **summary** of it: how many articles are in-scope (vs. `NA`), how many have
+`data=Y`, `code=Y`, `data_gated=Y`, and the headline **availability rate** (data and/or code
+deposited). Run it on *your* re-coding and on *the shipped* file and put the two lines side by side:
 
 ```bash
 python3 pipeline/reproduce_table.py output/my_vol90_recode.csv       # your re-coding
 python3 pipeline/reproduce_table.py output/asr_vol90_result.csv      # the shipped dataset
 ```
 
-For a row-by-row comparison, open both in a spreadsheet or `diff` them. Expect close-but-not-identical
-agreement, concentrated on borderline judgment calls.
+Each prints, for example:
+
+```
+asr_vol90_result.csv   in-scope  32 | NA  6 | data=Y  7 code=Y 12 gated=Y 10 | availability 12/32 =  37.5%
+```
+
+If your numbers line up with the shipped ones, your package-finding agrees with ours at the
+aggregate level. To see **which specific articles** you coded differently, open both files in a
+spreadsheet or `diff` them — the differences cluster on borderline judgment calls (the coding is
+model-generated, so expect close-but-not-identical agreement, not a byte-for-byte copy).
 
 ---
 
