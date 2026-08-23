@@ -265,9 +265,7 @@ code                           12/32 =  37.5%     12/32 =  37.5%
 data + code (both)             7/32 =  21.9%      6/32 =  18.8%
 in-scope articles              32                 32
 
-Field agreement (in_scope/qualitative/data/code/data_gated): 159/160 =  99.4%  (31/32 rows identical)
-
-Differences (1 cell(s) across 1 article(s)):
+Articles coded differently (1):
   DOI                        Title                                    field    Repo    Rerun
   --------------------------------------------------------------------------------------------
   10.1177/00031224251362351  The Cultural Devaluation of Feminize...  data     Y       N

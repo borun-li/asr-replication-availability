@@ -85,24 +85,18 @@ def main():
     print(f'{"data + code (both)":<30} {pct(rdc, rn):<18} {pct(udc, un)}')
     print(f'{"in-scope articles":<30} {rn:<18} {un}')
 
-    # --- field agreement + differences ---------------------------------------
-    diffs, cells, agree = [], 0, 0
+    # --- per-article differences (focus on the replication-package coding) ----
+    diffs = []
     for d in both:
         for f in FIELDS:
             a, b = repo[d].get(f, ""), rerun[d].get(f, "")
-            cells += 1
-            if a == b:
-                agree += 1
-            else:
+            if a != b:
                 diffs.append((d, repo[d].get("title") or rerun[d].get("title") or "", f, a, b))
-    exact_rows = sum(1 for d in both if all(repo[d].get(f, "") == rerun[d].get(f, "") for f in FIELDS))
-    print(f"\nField agreement (in_scope/qualitative/data/code/data_gated): "
-          f"{pct(agree, cells)}  ({exact_rows}/{len(both)} rows identical)")
 
     only_repo = [d for d in repo if d not in rerun]
     only_rerun = [d for d in rerun if d not in repo]
 
-    print(f"\nDifferences ({len(diffs)} cell(s) across {len({d for d,*_ in diffs})} article(s)):")
+    print(f"\nArticles coded differently ({len({d for d, *_ in diffs})}):")
     if diffs:
         print(f'  {"DOI":<26} {"Title":<40} {"field":<12} {"Repo":<7} Rerun')
         print("  " + "-" * 96)
