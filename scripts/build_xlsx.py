@@ -7,15 +7,22 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-def build_xlsx(year):
-    """Build the ASR xlsx file with headers and formatting."""
+def build_xlsx(year=None, out_path=None, sheet_name=None):
+    """Build an empty ASR workbook (headers + formatting).
+
+    Pass `year` for input/asr_<year>.xlsx, or `out_path`/`sheet_name` for a volume-based file
+    (e.g. input/asr_vol89.xlsx)."""
 
     # Determine project root (parent of scripts directory)
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
 
-    # Define output path
-    output_path = project_root / "input" / f"asr_{year}.xlsx"
+    # Define output path / sheet name
+    if out_path is None:
+        out_path = project_root / "input" / f"asr_{year}.xlsx"
+    if sheet_name is None:
+        sheet_name = f"asr_{year}"
+    output_path = out_path
 
     # Column definitions
     columns = [
@@ -54,7 +61,7 @@ def build_xlsx(year):
     # Create workbook
     wb = Workbook()
     ws = wb.active
-    ws.title = f"asr_{year}"
+    ws.title = sheet_name
 
     # Add headers to row 1
     for col_num, column_name in enumerate(columns, 1):

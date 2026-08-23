@@ -128,7 +128,7 @@ asr/
 │   ├── add_article.py       #   Scenario 3 — add an article (Block A from Crossref; needs internet)
 │   └── merge_new.py         #   Scenario 3 — merge coded rows into the dataset, by volume
 ├── scripts/                # deterministic ingestion; no LLM
-│   ├── prepare_input.py     #   ONE command → input/asr_<year>.xlsx Block A (chains the 3 below)
+│   ├── prepare_input.py     #   ONE command → input/asr_vol<N>.xlsx Block A (--vol N; chains the 3 below)
 │   ├── build_xlsx.py        #   create the empty workbook with headers
 │   ├── crossref_fetch.py    #   fill Block A (title/authors/date/url/volume/issue) from Crossref
 │   ├── format_xlsx.py       #   derive OnlineFirst + styling
@@ -211,14 +211,17 @@ judgment calls (see [`docs/run_provenance.md`](docs/run_provenance.md)).
 **Step 0 — get the volume's Block A worklist into `input/` (one command).** The shipped volumes
 already have theirs — `input/asr_vol90.xlsx` and `input/asr_vol91.xlsx` (Block A filled, coding
 columns empty) — so if you are verifying **vol 90 or vol 91, skip this step**. For any **other**
-year, one command builds it (run inside your clone from Step 1):
+volume, one command builds it (run inside your clone from Step 1):
 
 ```bash
-python3 scripts/prepare_input.py --year 2024     # -> input/asr_2024.xlsx (Block A complete)
+python3 scripts/prepare_input.py --vol 89        # -> input/asr_vol89.xlsx (Block A complete)
 ```
 
-(This just chains the three deterministic ingestion scripts — build → Crossref fetch → format — so
-you don't run them by hand. No LLM, no API key; needs internet + `pip install requests openpyxl`.)
+ASR is organized by **volume**, so pass `--vol N` (vol 89 = 2024, vol 90 = 2025, vol 91 = 2026 …).
+Because articles publish online-first and are assigned to a volume later, the script fetches the
+two calendar years around the volume from Crossref and keeps exactly the articles whose volume ==
+N — so the whole volume is captured with no gaps. No LLM, no API key; needs internet +
+`pip install requests openpyxl`.
 
 **Step 1 — clone the repo and open Claude Code inside it.**
 

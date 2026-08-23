@@ -38,14 +38,10 @@ CENTERED = {"published__online_date", "OnlineFirst (Y/N)", "volume", "issue",
             "coverage_checked"}
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--year", type=int, required=True)
-    args = ap.parse_args()
-
-    path = ROOT / "input" / f"asr_{args.year}.xlsx"
+def style(path, sheet=None):
+    """Add the OnlineFirst column + apply the standard formatting to a workbook, in place."""
     wb = load_workbook(path)
-    ws = wb[f"asr_{args.year}"]
+    ws = wb[sheet] if (sheet and sheet in wb.sheetnames) else wb.active
     headers = [c.value for c in ws[1]]
 
     # --- 1. insert OnlineFirst (Y/N) right after article_url -----------------
@@ -103,11 +99,16 @@ def main():
     ws.sheet_view.zoomScale = 110
 
     wb.save(path)
-    print(f"Saved {path}")
-    print(f"Columns ({last_col}): {headers}")
-    print(f"OnlineFirst = Y on {len(online_first)} rows:")
-    for r, t in online_first:
-        print(f"  row {r}: {t}")
+    return online_first
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--year", type=int, required=True)
+    args = ap.parse_args()
+    path = ROOT / "input" / f"asr_{args.year}.xlsx"
+    of = style(path)
+    print(f"Saved {path} — OnlineFirst = Y on {len(of)} rows.")
 
 
 if __name__ == "__main__":
