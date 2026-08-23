@@ -125,6 +125,7 @@ asr/
 │   ├── check_install.py     #   'Installation succeeded' dataset check
 │   ├── lookup.py            #   Scenario 1 — look up a package by DOI / URL
 │   ├── reproduce_table.py   #   Scenario 2 — recompute the availability table
+│   ├── compare.py           #   Scenario 2 — diff your re-coding vs the shipped dataset (one table)
 │   ├── add_article.py       #   Scenario 3 — add an article (Block A from Crossref; needs internet)
 │   └── merge_new.py         #   Scenario 3 — merge coded rows into the dataset, by volume
 ├── scripts/                # deterministic ingestion; no LLM
@@ -242,26 +243,42 @@ worklist (`input/asr_vol90.xlsx` already has Block A filled, coding columns empt
 > / OpenICPSR), and fill the coding columns strictly per the codebook. Work in batches and pause for
 > me to review. Write the filled rows to `output/my_vol90_recode.csv`.
 
-**Step 3 — compare your coding to the shipped dataset.** `reproduce_table.py` reads a coded file and
-prints a one-line **summary** of it: how many articles are in-scope (vs. `NA`), how many have
-`data=Y`, `code=Y`, `data_gated=Y`, and the headline **availability rate** (data and/or code
-deposited). Run it on *your* re-coding and on *the shipped* file and put the two lines side by side:
+**Step 3 — compare your coding to the shipped dataset (one command).** `compare.py` aligns your
+re-coding with the shipped dataset by DOI and prints, in one table, the **data / code / data+code
+availability** for each side **and every article you coded differently** — no manual `diff` needed:
 
 ```bash
-python3 pipeline/reproduce_table.py output/my_vol90_recode.csv       # your re-coding
-python3 pipeline/reproduce_table.py output/asr_vol90_result.csv      # the shipped dataset
+python3 pipeline/compare.py output/my_vol90_recode.csv       # auto-finds the shipped vol-90 file
 ```
 
-Each prints, for example:
+Example output:
 
 ```
-asr_vol90_result.csv   in-scope  32 | NA  6 | data=Y  7 code=Y 12 gated=Y 10 | availability 12/32 =  37.5%
+Comparing your re-coding vs the shipped dataset (vol 90)
+  Rerun (yours) : my_vol90_recode.csv
+  Repo (shipped): asr_vol90_result.csv
+
+Availability (% of in-scope)   Repo               Rerun
+--------------------------------------------------------------
+data                           7/32 =  21.9%      6/32 =  18.8%
+code                           12/32 =  37.5%     12/32 =  37.5%
+data + code (both)             7/32 =  21.9%      6/32 =  18.8%
+in-scope articles              32                 32
+
+Field agreement (in_scope/qualitative/data/code/data_gated): 159/160 =  99.4%  (31/32 rows identical)
+
+Differences (1 cell(s) across 1 article(s)):
+  DOI                        Title                                    field    Repo    Rerun
+  --------------------------------------------------------------------------------------------
+  10.1177/00031224251362351  The Cultural Devaluation of Feminize...  data     Y       N
+
+Not compared: 0 article(s) only in the shipped file, 0 only in yours.
 ```
 
-If your numbers line up with the shipped ones, your package-finding agrees with ours at the
-aggregate level. To see **which specific articles** you coded differently, open both files in a
-spreadsheet or `diff` them — the differences cluster on borderline judgment calls (the coding is
-model-generated, so expect close-but-not-identical agreement, not a byte-for-byte copy).
+Only the five categorical codes are compared (the free-text notes are ignored, so nothing drowns out
+the real disagreements). Close-but-not-identical agreement is expected — the coding is
+model-generated (see [`docs/run_provenance.md`](docs/run_provenance.md)); the differences cluster on
+borderline judgment calls.
 
 ---
 
