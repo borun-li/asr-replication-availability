@@ -193,11 +193,10 @@ doi                        vol scope data code gate  package / how to obtain
 10.1177/00031224251324504  90  Y     Y    Y    N     https://osf.io/smjnu/
 ```
 
-`scope` = in-scope, `data`/`code` = deposited?, `gate` = data access-restricted? Open the package
-link to download. For an **access-restricted** paper with no open package the last column shows
-`[access-restricted] <how to apply>`. Add **`--detail`** for the full per-field view (title,
-authors, and the verification notes). Coverage is the coded volumes; anything else is listed under
-"not matched".
+Add **`--detail`** for the full per-field view (title, authors, and the verification notes). An
+access-restricted paper with no open package shows `[access-restricted] <how to apply>` in the last
+column; queries outside the coded volumes are listed under "not matched". (Column meanings are in
+[The dataset](#the-dataset).)
 
 ### Scenario 2 — reproduce the replication-package-availability table (independent re-coding)
 
@@ -207,6 +206,18 @@ Cloudflare**, an agent cannot fetch the pages, so this path needs **Claude Code 
 extension**, and you must **pass the Cloudflare check once per session** (see
 [Prerequisites](#prerequisites)). The output is *comparable, not byte-identical* — the agents make
 judgment calls (see [`docs/run_provenance.md`](docs/run_provenance.md)).
+
+**The Block A worklist for each shipped volume already lives in `input/`** —
+`input/asr_vol90.xlsx` and `input/asr_vol91.xlsx`, with the bibliographic columns filled and the
+coding columns empty. To reproduce a **different** year/volume, generate its Block A first with the
+deterministic ingestion scripts (no LLM):
+
+```bash
+python3 scripts/build_xlsx.py     --year 2024   # empty workbook with headers
+python3 scripts/crossref_fetch.py --year 2024   # fills title/authors/date/url/volume/issue from Crossref
+python3 scripts/format_xlsx.py    --year 2024   # derives OnlineFirst + styling
+# -> input/asr_2024.xlsx : Block A complete, coding columns empty
+```
 
 **Step 1 — clone the repo and open Claude Code inside it.**
 

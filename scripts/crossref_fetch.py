@@ -140,6 +140,8 @@ def main():
             "authors": authors(it),
             "online": online_date(it),
             "url": (it.get("resource", {}).get("primary", {}) or {}).get("URL", ""),
+            "volume": str(it.get("volume") or "").strip(),
+            "issue": str(it.get("issue") or "").strip(),
             "doi": doi,
         })
     dropped = len(items) - len(rows)
@@ -164,15 +166,22 @@ def main():
     if ws.max_row > 1:
         ws.delete_rows(2, ws.max_row - 1)
 
+    def put(r, col, value):
+        if col in idx:
+            ws.cell(row=r, column=idx[col], value=value)
+
     for r, row in enumerate(rows, start=2):
-        ws.cell(row=r, column=idx["title"], value=row["title"])
-        ws.cell(row=r, column=idx["author(s)"], value=row["authors"])
-        ws.cell(row=r, column=idx["published__online_date"], value=row["online"])
-        ws.cell(row=r, column=idx["article_url"], value=row["url"])
-        # All other columns intentionally left blank.
+        put(r, "title", row["title"])
+        put(r, "author(s)", row["authors"])
+        put(r, "published__online_date", row["online"])
+        put(r, "article_url", row["url"])
+        put(r, "volume", int(row["volume"]) if row["volume"].isdigit() else row["volume"] or None)
+        put(r, "issue", int(row["issue"]) if row["issue"].isdigit() else row["issue"] or None)
+        # Block B (coding) columns intentionally left blank.
 
     wb.save(xlsx)
-    print(f"Wrote {len(rows)} rows -> {xlsx}")
+    print(f"Wrote {len(rows)} rows -> {xlsx} (Block A incl. volume/issue). "
+          f"Run format_xlsx.py to derive OnlineFirst + styling.")
 
 
 if __name__ == "__main__":
