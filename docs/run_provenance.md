@@ -1,6 +1,6 @@
 # ASR Replication-Package Availability — Run Provenance
 
-How the ASR-2026 availability dataset (`output/asr_2026_result.xlsx`) was produced. This dataset is
+How the ASR-2026 availability dataset (`output/asr_vol91_result.xlsx`) was produced. This dataset is
 a **hybrid product**, not a pure machine run — read §2 before citing it as "model output".
 
 ---
@@ -14,17 +14,17 @@ a **hybrid product**, not a pure machine run — read §2 before citing it as "m
 | **Agent / workflow spec** | `agent.toml` **v1.1.0** | `agent.toml` header (`version = "1.1.0"`). Six-agent per-article pipeline (Download → Prep → Locate ↺LocVerify → Execute ↺ExecVerify → Write). |
 | **Codebook version** | **v3.3** | `docs/codebook.md` header. Block B is journal-neutral / identical to SocSci. Includes the v3.3 physical-deposit rule plus two later clarifications (Schwartz & King = `data = Y`; a free hosting-platform login is not a `data_gated` gate). |
 | **Skills** | 8 | `skills/`: `asr-data-availability-statement`, `article-pdf-availability-statement`, `author-homepage`, `openicpsr-repository`, `osf-repository`, `dataverse-any-host`, `github-repository-and-pages`, `restricted-data-sources-asr`. |
-| **Input** | 23 ASR-2026 articles | `input/asr_2026.xlsx` (Block A filled by `scripts/`); raw SAGE HTML + Crossref JSON in `cache/`. Input file kept pristine; results written to `output/`. |
+| **Input** | 23 ASR-2026 articles | `input/asr_vol91.xlsx` (Block A filled by `scripts/`); raw SAGE HTML + Crossref JSON in `cache/`. Input file kept pristine; results written to `output/`. |
 
 ---
 
 ## 2. This dataset is a HYBRID (tool base → human adjudication → blind validation)
 
-The cell values in `output/asr_2026_result.xlsx` come from **two sources layered together**, so it
+The cell values in `output/asr_vol91_result.xlsx` come from **two sources layered together**, so it
 must NOT be described as pure model output at a single temperature:
 
 1. **Tool base.** The six-agent pipeline (`agent.toml` + `skills/`, `claude-opus-4-8`) coded Block B
-   for all 23 articles → the initial `asr_2026_result.xlsx` (project Phase 6).
+   for all 23 articles → the initial `asr_vol91_result.xlsx` (project Phase 6).
 2. **Manual adjudication (overwrites the same file).** Borun reviewed every article and corrected a
    subset of cells — this is what makes the file the **gold standard** (the authoritative
    human-verified reference). Recorded rulings:
@@ -39,7 +39,7 @@ must NOT be described as pure model output at a single temperature:
    - **Between Two Rituals** → `in_scope = Y` (original 39 interviews + 3-yr ethnography).
 3. **Blind validation (separate file, does NOT touch the gold).** 23 fresh independent agents
    re-coded Block B from cache + codebook + skills only (no access to the answer key), workflow run
-   `wf_e964a094-273` → `output/asr_2026_rerun.xlsx`. **Agreement vs. gold = 96.5% (111/115 cells);
+   `wf_e964a094-273` → `output/asr_vol91_rerun.xlsx`. **Agreement vs. gold = 96.5% (111/115 cells);
    19/23 rows exact; in_scope 100%, qualitative 100%.** Zero skill/agent bugs; the few differences
    were coding judgments (and in two, the tool was right and the manual gold was corrected).
 
@@ -53,10 +53,10 @@ but the gold's authority rests on the human review of step 2.
 
 | File | Role |
 |---|---|
-| `output/asr_2026_result.xlsx` | **The gold** — human-finalized Block B (authoritative). |
+| `output/asr_vol91_result.xlsx` | **The gold** — human-finalized Block B (authoritative). |
 | `output/_gold/asr_2026_manual_gold_20260821.xlsx` | Frozen snapshot taken during validation setup (**pre** the Effort `code` correction). |
-| `output/asr_2026_rerun.xlsx` | Blind re-run output — validation only, never merged into the gold. |
-| `input/asr_2026.xlsx` | Pristine input (Block A). |
+| `output/asr_vol91_rerun.xlsx` | Blind re-run output — validation only, never merged into the gold. |
+| `input/asr_vol91.xlsx` | Pristine input (Block A). |
 
 ---
 
