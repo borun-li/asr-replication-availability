@@ -31,8 +31,8 @@ coded and counted exactly like an open one (the Data Availability Statement is p
 ## Table of Contents
 
 - [Description](#description)
+- [Prerequisites](#prerequisites)
 - [Quick Start (install)](#quick-start-install)
-  - [Prerequisites](#prerequisites)
 - [Repository structure](#repository-structure)
 - [The dataset](#the-dataset)
 - [Using it](#using-it)
@@ -42,6 +42,21 @@ coded and counted exactly like an open one (the Data Availability Statement is p
 - [License](#license)
 - [Contributions](#contributions)
 - [Contact](#contact)
+
+---
+
+## Prerequisites
+
+| To do this | You need |
+|---|---|
+| **Browse the dataset** / run `check_install.py` | **Python 3** — nothing else (standard library only) |
+| Re-run the **ingestion** (`scripts/`) for a new volume | Python 3 + `pip install requests openpyxl` + internet |
+| **Code new articles** (extend coverage) | [Claude Code](https://claude.com/claude-code) with **your own** API access + the Claude-in-Chrome extension (to read paywalled SAGE pages) |
+
+> Coding runs on **your own** Claude Code account — your API key or Claude subscription. Nothing
+> routes through the author, and there is no shared key or server. The `mailto` in the fetch scripts
+> is only Crossref's optional politeness identifier, not a credential — set
+> `CROSSREF_MAILTO=you@example.com` to use your own, or leave it unset for the anonymous pool.
 
 ---
 
@@ -88,19 +103,6 @@ Installation succeeded — ASR dataset loaded (vol 91 (2026): 26 articles; vol 9
 
 That's it — nothing else to set up. Open `output/asr_vol90_result.csv` (or the `.xlsx`) to browse
 the coding.
-
-### Prerequisites
-
-| To do this | You need |
-|---|---|
-| **Browse the dataset** / run `check_install.py` | **Python 3** — nothing else (standard library only) |
-| Re-run the **ingestion** (`scripts/`) for a new volume | Python 3 + `pip install requests openpyxl` + internet |
-| **Code new articles** (extend coverage) | [Claude Code](https://claude.com/claude-code) with **your own** API access + the Claude-in-Chrome extension (to read paywalled SAGE pages) |
-
-> Coding runs on **your own** Claude Code account — your API key or Claude subscription. Nothing
-> routes through the author, and there is no shared key or server. The `mailto` in the fetch scripts
-> is only Crossref's optional politeness identifier, not a credential — set
-> `CROSSREF_MAILTO=you@example.com` to use your own, or leave it unset for the anonymous pool.
 
 ---
 
