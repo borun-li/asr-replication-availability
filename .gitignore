@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+~$*
+__pycache__/
+*.pyc
+
+# Raw cached article HTML (copyrighted SAGE full-text) and API dumps — NOT redistributed
+cache/
+
+# Internal working files
+output/_scratch/
+output/_gold/
+PROJECT_LOG.md

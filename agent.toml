@@ -1,0 +1,201 @@
+# =============================================================================
+# asr-package-avail — replication-package availability agent (American Sociological Review)
+# =============================================================================
+# Per-article loop as SIX specialized agents (parallel to the SocSci pipeline) so no single
+# agent carries a bloated context. Each agent has one job, a small toolset, and hands a small
+# structured result to the next. Skills NOT listed here are IGNORED.
+#
+# Flow:  1 Downloading → 2 Preparation → (NA? stop) → 3 Locating →
+#        4 Loc-Verification (↺ 3, max 3) → 5 Execution →
+#        6 Exec-Verification (↺ 5, max 3) → write row
+#
+# Block B (coding) is IDENTICAL to SocSci — see docs/codebook.md (shared). This file changes
+# only the JOURNAL-SPECIFIC layer: where ASR/SAGE exposes materials, which hosts to read, and
+# how the SAGE paywall / page structure is handled. Every difference from SocSci is marked [ASR].
+# =============================================================================
+
+[agent]
+name        = "asr-package-avail"
+version     = "1.1.0"
+model       = "claude-opus-4-8"
+goal        = "For each ASR article, decide if it is in scope, then find & verify whether the authors deposited data and/or code — recording a calibrated, evidence-backed row under the shared codebook."
+
+[agent.io]
+articles    = "input/asr_2026.xlsx"          # input + output table (sheet "asr_2026")
+codebook    = "docs/codebook.md"             # shared, journal-neutral (Block B definitions)
+skills_dir  = "skills/"
+cache_dir   = "cache/"                        # raw SAGE HTML + crossref JSON (layer-2 reproducibility)
+scratch_dir = "output/_scratch/"
+
+# Journal facts [ASR]:
+#   publisher = SAGE (journals.sagepub.com);  ISSN = 0003-1224;  DOI prefix = 10.1177/
+#   doi_slug  = DOI with every non-alphanumeric char -> "_"  (10.1177/00031224251411563 -> 10_1177_00031224251411563)
+#   Block A (title/authors/date/url/OnlineFirst/volume/issue) is filled by the
+#   ingestion scripts (scripts/) BEFORE this pipeline runs; agents fill Block B only.
+
+# Binding codebook rules (authoritative text in docs/codebook.md — journal-neutral):
+#   in_scope Y = authors ran an original empirical analysis (qualitative-empirical is Y).
+#   data Y = authors DEPOSITED their analysis dataset (a pointer to a public source is NOT a deposit).
+#   code Y = authors deposited code that reproduces THIS paper.
+#   data_gated Y = underlying data not freely/publicly available, even with no external route.
+#   RULES: (1) Y means THESE authors' materials reproduce THIS paper; (2) a tool is not a deposit;
+#          (3) a preprint is not a package; (4) confirm the repo/node belongs to THIS paper;
+#          (5) every row gets a note; (6) genre does not decide status.
+#   [ASR] Article access (paywalled vs. open) is NOT recorded and NEVER an inclusion filter —
+#         a paywalled article is coded and counted exactly like an open one (the DAS is public).
+
+# =============================================================================
+# 1. DOWNLOADING AGENT   [ASR: landing-page HTML first, not the PDF]
+# =============================================================================
+[agents.downloading]
+job     = """
+[ASR] Fetch the SAGE ARTICLE LANDING PAGE HTML and cache it to cache/<doi_slug>.html (skip if
+cached). The landing page — NOT the PDF — is fetched first, because the Data Availability
+Statement is rendered in the public landing-page HTML even for paywalled articles, and ~half of
+ASR articles are paywalled. Fetch the article PDF only if a later step needs it AND it is openly
+downloadable; if the PDF is behind the paywall, STOP — never bypass a paywall (no cookies, no
+proxy, no institutional auth). Custom User-Agent; serial.
+"""
+input   = "{doi, article_url}"
+tools   = ["fetch_url", "download"]
+output  = "{landing_html_path, pdf_path_or_null}"
+
+# =============================================================================
+# 2. PREPARATION AGENT  (scope gate)   [ASR: no submission_date]
+# =============================================================================
+[agents.preparation]
+job     = """
+Read the abstract on the cached landing page and decide scope BEFORE any package search:
+  • qualitative = Y if primary evidence is non-numeric (interviews/ethnography/archival/textual)
+    interpreted directly; papers using BOTH qual and quant are coded N (quantitative).
+  • in_scope = Y if the paper reports a quantitative result the authors COMPUTED THEMSELVES;
+    NA if there is nothing to reproduce; ? only if it does not fit the codebook — say why.
+  • Do NOT judge empirical-vs-not by title alone.
+[ASR] There is NO submission/received date on the SAGE page and NO policy grandfathering —
+do not look for one. Article access (paywalled vs. open) does NOT affect in_scope or the
+denominator — a paywalled article is coded exactly like an open one.
+"""
+input   = "{doi, title, landing_html_path}"
+tools   = ["fetch_url", "read_pdf"]
+output  = "{in_scope: Y|NA|?, qualitative: Y|N, reason, coverage_checked}"
+gate    = "If in_scope = NA → write the row (data/code blank, note the reason) and STOP. Skip agents 3–6."
+
+# =============================================================================
+# 3. LOCATING AGENT   [ASR: Data Availability Statement first, paywall-proof]
+# =============================================================================
+[agents.locating]
+job     = "Locate the replication package; fill package_location + path_to_package."
+skills  = [
+  "asr-data-availability-statement",     # [ASR] landing-page DAS section — CHECK FIRST (paywall-proof)
+  "article-pdf-availability-statement",  # fallback, ONLY when the PDF/preprint is openly readable
+  "author-homepage",                     # fallback: personal/lab pages
+]
+input   = "{doi, title, authors, article_url, landing_html_path, pdf_path_or_null}"
+tools   = ["fetch_url", "read_pdf", "web_search", "crossref"]
+output  = "{package_location, path_to_package, coverage_checked}"
+note    = """
+[ASR] The landing-page DATA AVAILABILITY STATEMENT (DAS) is the FIRST place to look — but it is
+NOT guaranteed present: several articles (including Open-Access ones) have no DAS at all. Two rules
+when reading it: (a) the real DAS paragraph is rendered INLINE in the article body (often just
+before the References), NOT in the section merely labelled 'Data availability statement' which on
+SAGE shows only a decoy stub; (b) read the DAS paragraph to its END — the authors' own repo is
+often the LAST clause, after a list of cited public sources.
+If there is no DAS, or it carries no link, work the fallback chain:
+  (1) article PDF / preprint statement (only if openly readable, or a SocArXiv/SSRN/OSF preprint);
+  (2) author / lab homepage;
+  (3) DIRECT REPOSITORY SEARCH via APIs — OpenICPSR (ASA collection), GitHub, OSF, Dataverse — by
+      DOI + author + title, plus Crossref/DataCite relation metadata (a dataset DOI linked to the
+      article DOI). These deterministic API searches are the PRIMARY fallback; free-text web_search
+      is OPTIONAL and may be unavailable — never let its absence force a wrong conclusion.
+ASR NEVER uses the phrase 'Reproducibility Package'. Ignore two SAGE decoys: the boilerplate
+'Supplementary Material' license paragraph (on every article; usually only an appendix PDF) and a
+generic 'Data is available for this article. View more' stub — neither is the package. A package
+found by search (not DAS-linked) is valid but faces a HIGHER provenance bar at Exec-Verify.
+The paywall does NOT block any fallback channel.
+If, after the DAS AND every fallback, no package is found, that is a confident 'no package' (not a
+deferral): leave package_location blank, record what was searched in coverage_checked, and let
+Execution code data=N / code=N with data_gated set from the article's described data source.
+"""
+
+# =============================================================================
+# 4. LOC-VERIFICATION AGENT   [ASR: OpenICPSR/OSF/Dataverse liveness via API, gated≠dead]
+# =============================================================================
+[agents.loc_verification]
+job     = "Confirm the located package is real before Execution reads it."
+checks  = [
+  "liveness: resolve path_to_package → live (http 200) | dead | auth-walled",
+  "content:  open the file tree + README → real package | manuscript-only | empty",
+  "[ASR] OpenICPSR/registration login-wall is NORMAL (the package exists but is gated) — record it, do NOT treat as dead",
+  "[ASR] OSF and Dataverse landing pages are JS-rendered — an empty HTML fetch is NOT 'dead'; verify via api.osf.io / the Dataverse API, and RETRY once on a failed or empty API response, before concluding empty",
+]
+input   = "{package_location, path_to_package}"
+tools   = ["fetch_url", "download", "list_tree", "osf_api", "dataverse_api"]
+iterate = "If genuinely dead OR manuscript-only/empty → send back to LOCATING for new leads (homepage / API repo search / Crossref relation). Max 3 iterations; if still no real package, conclude NO PACKAGE FOUND → the row is coded data=N / code=N (package absent), with coverage_checked recording what was searched. Do not leave the row unresolved."
+output  = "{live: bool, is_package: bool, gated_login: bool, tree, readme_text}"
+
+# =============================================================================
+# 5. EXECUTION AGENT   [ASR: OpenICPSR + any-Dataverse + OSF-API hosts]
+# =============================================================================
+[agents.execution]
+job     = "Determine data & code availability AND the data-access gate; fill data, code, data_gated, data_source/apply_at."
+skills  = [
+  "openicpsr-repository",         # [ASR] AEA-style self-deposit; project/version structure; often login-gated
+  "osf-repository",               # [ASR] API-first (api.osf.io), components + add-on storage
+  "dataverse-any-host",           # [ASR] Harvard AND arbitrary Dataverse installs, via Dataverse API
+  "github-repository-and-pages",  # org- or lab-owned repos are common (provenance by name/README, not owner==author)
+  "restricted-data-sources-asr",  # US-centric gated sources + apply-at templates (PSID VDE, FSRDC, vendor panels)
+]
+input   = "{doi, package_location, tree, readme_text, gated_login}"
+tools   = ["fetch_url", "github", "download", "list_tree", "osf_api", "dataverse_api", "read_pdf"]
+output  = "{data: Y|N, code: Y|N, data_gated: Y|N, data_source: string, notes}"
+note    = """
+  data = Y when the authors PHYSICALLY DEPOSITED the analysis data files in the package (codebook
+         v3.3): public-sourced deposits COUNT — settling public data (e.g. ACS/BEA/policy .dta) into
+         the package IS building a replication package. data = N only when the package merely LINKS
+         to an external source the user must download themselves, or when NO analysis data files are
+         deposited (code-only deposit, or no package at all).
+  [ASR] PARTIAL / MIXED deposit: if the authors physically deposited SOME analysis data (even
+         public-sourced) but a core portion is proprietary/restricted and ABSENT (e.g. an
+         individual-level credit-bureau panel), code data = Y (data WAS deposited) AND data_gated = Y
+         (for the restricted portion). Do NOT flip data to N because the deposited data is
+         public-sourced or because a further portion is missing.
+  code = Y only if the authors deposited code that reproduces the paper's results.
+  data_gated = Y when the underlying analysis data is restricted (proprietary, IRB/confidential,
+         DUA/application/RDC, register/administrative), EVEN IF code (and derived data) is deposited,
+         and even if there is no external route. Free public data → N.
+  data_source = when data_gated=Y, NAME the restricted source AND where/how to apply (see
+         restricted-data-sources-asr for US templates: PSID Virtual Data Enclave, FSRDC, vendor panels).
+  Gated data (DUA/registration/login/CAPTCHA): the located package still counts — record apply_at,
+  never sign, register, or log in. (data+code / neither are computed by pipeline code — do not fill.)
+"""
+
+# =============================================================================
+# 6. EXEC-VERIFICATION AGENT   [ASR: org-repo provenance; verify analysis data really deposited]
+# =============================================================================
+[agents.exec_verification]
+job     = "Confirm the detected data & code exist AND belong to THIS paper, AND verify data_gated + apply_at."
+checks  = [
+  "[ASR] provenance: match by REPO NAME / README / a DOI or article back-reference — accept org- or lab-owned repos (e.g. github.com/<lab-org>/...-ASR); do NOT require repo owner == a personal author handle (RULE 4)",
+  "the files backing each Y are really present in the tree (not inferred from README)",
+  "[ASR] for data=Y (codebook v3.3): confirm analysis data files are PHYSICALLY in the package and serve to reproduce the article — public-sourced deposits count. A restricted/absent core portion keeps data=Y (WITH data_gated=Y), it does NOT make data=N. Code data=N only when there are NO deposited data files (a pointer/link only, or code-only)",
+  "not a general-purpose tool/dependency (RULE 2) and not a preprint (RULE 3)",
+  "data_gated: independently confirm the underlying data is restricted; correct Y↔N (do not flag a free public source as gated). When data_gated=Y, notes must state the basis",
+  "data_source/apply_at: a concrete apply-at (provider + URL/agreement/email) is present when data_gated=Y",
+]
+input   = "{doi, title, authors, package_location, tree, readme_text, data, code, data_gated, data_source}"
+tools   = ["fetch_url", "github", "osf_api", "dataverse_api", "read_pdf"]
+iterate = "If the data or code does NOT belong to this paper → send back to EXECUTION. Max 3 iterations; if provenance still cannot be confirmed, do NOT credit the unverified Y — code it N and record the reason in notes."
+output  = "{data_confirmed: Y|N, code_confirmed: Y|N, data_gated: Y|N, data_source: string, provenance, notes}"
+
+# =============================================================================
+# ROW WRITER  (after the loop, or immediately on an NA scope-gate)
+# =============================================================================
+[write]
+target  = "input/asr_2026.xlsx  (sheet 'asr_2026')"
+columns = [
+  "in_scope", "qualitative", "data", "code",
+  "data_gated", "data_source / apply_at",
+  "package_location", "path_to_package", "coverage_checked", "notes",
+]
+never   = "data + code, neither  (computed by pipeline code — leave untouched)"
+require = "notes on EVERY row (RULE 5). data_source/apply_at REQUIRED whenever data_gated=Y. [ASR] NO submission_date column. Process in groups; stop after each for manual review."
