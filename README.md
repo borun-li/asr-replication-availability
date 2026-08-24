@@ -22,6 +22,7 @@ two datasets are directly comparable. Coverage so far, by volume:
 |---|---|---|---|---|---|
 | vol 91 | 2026 (pilot) | 24 | 10 | 12 | **13 / 24 = 54.2%** |
 | vol 90 | 2025 | 32 | 7 | 12 | **12 / 32 = 37.5%** |
+| vol 89 | 2024 | 36 | 7 | 9 | **9 / 36 = 25.0%** |
 
 The denominator is in-scope empirical articles and is **access-agnostic** — a paywalled article is
 coded and counted exactly like an open one (the Data Availability Statement is public regardless).
@@ -104,7 +105,7 @@ python3 pipeline/check_install.py
 You should see:
 
 ```
-Installation succeeded — ASR dataset loaded (vol 91 (2026): 26 articles; vol 90 (2025): 38 articles; 64 total).
+Installation succeeded — ASR dataset loaded (vol 91 (2026): 26 articles; vol 90 (2025): 38 articles; vol 89 (2024): 40 articles; 104 total).
 ```
 
 That's it — nothing else to set up. Open `output/asr_vol90_result.csv` (or the `.xlsx`) to browse
@@ -134,8 +135,8 @@ asr/
 │   ├── crossref_fetch.py    #   fill Block A (title/authors/date/url/volume/issue) from Crossref
 │   ├── format_xlsx.py       #   derive OnlineFirst + styling
 │   └── html_sink.py         #   localhost helper for capturing article HTML from a real browser
-├── input/                  # Block A tables, one per volume (asr_vol90.xlsx, asr_vol91.xlsx)
-├── output/                 # the coded dataset — CSV + xlsx (asr_vol90_result.*, asr_vol91_result.*)
+├── input/                  # Block A tables, one per volume (asr_vol89.xlsx … asr_vol91.xlsx)
+├── output/                 # the coded dataset — CSV + xlsx (asr_vol89_result.* … asr_vol91_result.*)
 ├── instructions.md         # ingestion runbook
 └── LICENSE
 ```
@@ -202,23 +203,23 @@ column; queries outside the coded volumes are listed under "not matched". (Colum
 
 ### Scenario 2 — reproduce the replication-package-availability table (independent re-coding)
 
-Verify a **whole volume** yourself — re-run the coding method over every article in, say, vol 90 or
-vol 91 and compare your table to the shipped one. Because ASR is behind a **SAGE paywall +
+Verify a **whole volume** yourself — re-run the coding method over every article in, say, vol 89 or
+vol 90 and compare your table to the shipped one. Because ASR is behind a **SAGE paywall +
 Cloudflare**, an agent cannot fetch the pages, so this path needs **Claude Code + the Claude-in-Chrome
 extension**, and you must **pass the Cloudflare check once per session** (see
 [Prerequisites](#prerequisites)). The output is *comparable, not byte-identical* — the agents make
 judgment calls (see [`docs/run_provenance.md`](docs/run_provenance.md)).
 
 **Step 0 — get the volume's Block A worklist into `input/` (one command).** The shipped volumes
-already have theirs — `input/asr_vol90.xlsx` and `input/asr_vol91.xlsx` (Block A filled, coding
-columns empty) — so if you are verifying **vol 90 or vol 91, skip this step**. For any **other**
-volume, one command builds it (run inside your clone from Step 1):
+already have theirs — `input/asr_vol89.xlsx`, `input/asr_vol90.xlsx` and `input/asr_vol91.xlsx`
+(Block A filled, coding columns empty) — so if you are verifying **vol 89, 90, or 91, skip this
+step**. For any **other** volume, one command builds it (run inside your clone from Step 1):
 
 ```bash
-python3 scripts/prepare_input.py --vol 89        # -> input/asr_vol89.xlsx (Block A complete)
+python3 scripts/prepare_input.py --vol 88        # -> input/asr_vol88.xlsx (Block A complete)
 ```
 
-ASR is organized by **volume**, so pass `--vol N` (vol 89 = 2024, vol 90 = 2025, vol 91 = 2026 …).
+ASR is organized by **volume**, so pass `--vol N` (vol 88 = 2023, vol 89 = 2024, vol 90 = 2025 …).
 Because articles publish online-first and are assigned to a volume later, the script fetches the
 two calendar years around the volume from Crossref and keeps exactly the articles whose volume ==
 N — so the whole volume is captured with no gaps. No LLM, no API key; needs internet +
