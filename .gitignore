@@ -11,3 +11,6 @@ cache/
 output/_scratch/
 output/_gold/
 PROJECT_LOG.md
+
+# Internal QA / manual-review exports (not redistributed)
+intermediary/

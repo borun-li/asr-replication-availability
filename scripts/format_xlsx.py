@@ -19,6 +19,7 @@ HEADER_FILL = PatternFill("solid", fgColor="1F3864")   # dark blue
 HEADER_FONT = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
 BODY_FONT = Font(name="Calibri", size=11)
 STRIPE = PatternFill("solid", fgColor="EEF2F8")        # very light blue
+NO_FILL = PatternFill(fill_type=None)                  # explicit clear (odd rows)
 OF_FILL = PatternFill("solid", fgColor="FFF2CC")       # highlight OnlineFirst=Y
 THIN = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
@@ -87,8 +88,9 @@ def style(path, sheet=None):
                 horizontal="center" if centered else "left",
                 vertical="top", wrap_text=headers[c - 1] in
                 ("title", "author(s)", "notes", "path_to_package"))
-            if r % 2 == 0:
-                cell.fill = STRIPE
+            # set the fill on EVERY body cell so re-styling never leaves a stale
+            # highlight behind (odd rows are explicitly cleared, not skipped)
+            cell.fill = STRIPE if r % 2 == 0 else NO_FILL
         if is_of:
             ws.cell(row=r, column=of_col).fill = OF_FILL
             ws.cell(row=r, column=of_col).font = Font(bold=True, color="9C5700")
